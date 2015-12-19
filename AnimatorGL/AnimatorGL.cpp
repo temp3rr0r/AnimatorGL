@@ -2,41 +2,61 @@
 Generated OpenGL code to display a 3D graph
 */
 #include "stdafx.h"
+
 // Macros
 #define GL_GLEXT_PROTOTYPES
 
 // Constants
 static const float DEFAULT_X_MIN = 0.0f;
-static const float DEFAULT_X_MAX = 10.0f;
+static const float DEFAULT_X_MAX = 2.0f;
 static const float DEFAULT_Y_MIN = 0.0f;
-static const float DEFAULT_Y_MAX = 10.0f;
+static const float DEFAULT_Y_MAX = 2.0f;
 static const float DEFAULT_Z_MIN = 0.0f;
-static const float DEFAULT_Z_MAX = 10.0f;
-static const float DEFAULT_Z_STEP = 0.1f;
+static const float DEFAULT_Z_MAX = 2.0f;
+static const float DEFAULT_Z_STEP = 0.2f;
 static const float DEFAULT_TIME_STEP = 0.05f;
 static const float DEFAULT_VALUES_MULTIPLIER = 10.0f;
-static const float DEFAULT_GRAPH_STEP = 0.1f;
+static const float DEFAULT_GRAPH_STEP = 0.2f;
 static const float DEFAULT_GRAPH_MIN = 0.0f;
-static const float DEFAULT_GRAPH_MAX = 10.0f;
+static const float DEFAULT_GRAPH_MAX = 2.0f;
 static const float DEFAULT_GRID_MAX = 1.0f;
-static const float DEFAULT_GRID_STEP = 0.1f;
-static const int DEFAULT_WINDOW_WIDTH = 400;
-static const int DEFAULT_WINDOW_HEIGHT = 400;
+static const float DEFAULT_GRID_STEP = 0.2f;
+static const int DEFAULT_WINDOW_WIDTH = 800;
+static const int DEFAULT_WINDOW_HEIGHT = 800;
 static const int DEFAULT_SIGNAL_SIZE_MAX = 200;
 
-// Function Prototypes
-void display();
-void special_keys();
-
 // Global Variables
-float rotate_y = -20.0f; // Starting eyes_x, eyes_y camera angle
-float rotate_x = 70.0f;
+float rotate_y = -90.0f; // Starting eyes_x, eyes_y camera angle
+float rotate_x = 90.0f;
 float angle = 0.0f; // angle of rotation for the camera direction
-float look_x = 0.0f, look_z = 1.0f; // actual vector representing the camera's direction
-float eyes_x = 0.5f, eyes_z = 0.5f, eyes_y = 0.5f; // XZ position of the camera
-float scale_percentage = 1.0f;
+float look_x = 0.5f, look_z = 1.0f; // actual vector representing the camera's direction
+float eyes_x = 1.0f, eyes_z = 1.0, eyes_y = 4.0f; // XZ position of the camera
+float scale_percentage = 1.2f;
 bool show_grid = true; // Toggle grid on/off
 bool show_areas = true; // Toggle grid on/off
+
+int thread_count = DEFAULT_NUMBER_OF_THREADS;
+double gravity = GRAVITATIONAL_CONSTANT;
+size_t particle_count = DEFAULT_PARTICLE_COUNT;
+double total_time_steps = DEFAULT_TOTAL_TIME_STEPS;
+double time_step = TIME_STEP;
+size_t universe_size_x = UNIVERSE_SIZE_X;
+size_t universe_size_y = UNIVERSE_SIZE_Y;
+
+std::vector<Particle> particles;
+tbb::concurrent_vector<Particle, tbb::cache_aligned_allocator<Particle>> particles_tbb;
+// Function Prototypes
+void display();
+#include <windows.h>  // for MS Windows
+
+/* Global variables */
+char title[] = "N-Body";
+GLfloat anglePyramid = 0.0f;  // Rotational angle for pyramid [NEW]
+GLfloat angleCube = 0.0f;     // Rotational angle for cube [NEW]
+int refreshMills = 50;        // refresh interval in milliseconds [NEW]
+
+/* Initialize OpenGL Graphics */
+
 
 // Helpful function to draw a char* array of characters
 void draw_string(void * font, char *s, float x, float y, float z) {
@@ -45,36 +65,7 @@ void draw_string(void * font, char *s, float x, float y, float z) {
 	for (i = 0; i < strlen(s); i++)
 		glutBitmapCharacter(font, s[i]);
 }
-
-// Helps in looping through all the colours based on ID
-void set_colour(int colour) {
-	switch (colour)
-	{
-	case 0: // White
-		glColor3f(1.0, 1.0, 1.0);
-		break;
-	case 1: // Green
-		glColor3f(0.0, 1.0, 0.0);
-		break;
-	case 2: // Blue
-		glColor3f(0.0, 0.0, 1.0);
-		break;
-	case 3: // Yellow
-		glColor3f(1.0, 1.0, 0.0);
-		break;
-	case 4: //
-		glColor3f(0.0, 1.0, 1.0);
-		break;
-	case 5: //
-		glColor3f(1.0, 0.0, 1.0);
-		break;
-	case -1: // Red
-		glColor3f(1.0, 0.0, 0.0);
-		break;
-	}
-}
-
-// Draw the 3d Cartesian system without any points
+							  // Draw the 3d Cartesian system without any points
 void draw_3d_cartesian_system() {
 
 	// Print stationary help text
@@ -152,182 +143,123 @@ void draw_3d_cartesian_system() {
 	}
 }
 
-// Helpful function to draw CBD signals from a float array
-void draw_signal(char* label, float* points, int signal_id) {
 
-	set_colour(signal_id % 6);// Set Colour rotation based on ID
+/* Handler for window-repaint event. Called back when the window first appears and
+whenever the window needs to be re-painted. */
 
-	draw_string(GLUT_BITMAP_HELVETICA_10, label, -0.1f, 0.0f, DEFAULT_Z_STEP * signal_id); // Label
 
-	// Draw points
-	glBegin(GL_POINTS);
-	glPushMatrix();
-	glTranslated(0.0f, 0.0f, 0.0f); // draw an empty circle, hack to remove a bug
-	glutSolidSphere(0.0f, 50, 50);
-	glPopMatrix();
+/* Called back when timer expired [NEW] */
+void timer(int value) {
+	glutPostRedisplay();      // Post re-paint request to activate display()
+	glutTimerFunc(refreshMills, timer, 0); // next timer call milliseconds later
+}
 
-	for (unsigned int i = 0; i < DEFAULT_SIGNAL_SIZE_MAX; i++) {
-		glPushMatrix();
-		glTranslated(static_cast<float>(DEFAULT_TIME_STEP * i), points[i] / DEFAULT_VALUES_MULTIPLIER, DEFAULT_Z_STEP * signal_id);
-		glutWireSphere(0.01f, 50, 50);
-		glPopMatrix();
-	}
-	glEnd();
+/* Handler for window re-size event. Called back when the window first appears and
+whenever the window is re-sized with its new width and height */
+void reshape(GLsizei width, GLsizei height) {  // GLsizei for non-negative integer
+											   // Compute aspect ratio of the new window
+	if (height == 0) height = 1;                // To prevent divide by 0
+	GLfloat aspect = (GLfloat)width / (GLfloat)height;
 
-	//Draw Lines or 2D Areas with the xX' axis
-	unsigned int first = 0; // ID of the previous points' eyes_y value	
-	if (show_areas == false)
+	// Set the viewport to cover the new window
+	glViewport(0, 0, width, height);
+
+	// Set the aspect ratio of the clipping volume to match the viewport
+	glMatrixMode(GL_PROJECTION);  // To operate on the Projection matrix
+	glLoadIdentity();             // Reset
+								  // Enable perspective projection with fovy, aspect, zNear and zFar
+	gluPerspective(45.0f, aspect, 0.1f, 100.0f);
+}
+
+// Helps in looping through all the colours based on ID
+void set_colour(int colour) {
+	switch (colour)
 	{
-		// Connect each point with a line
-		glLineWidth(1);
-		glBegin(GL_LINES);
-		glColor3f(0.8f, 0.8f, 1.0f);
-		set_colour(signal_id % 6);
-		unsigned int first_value = 0; // ID of the previous points' eyes_y value
-		for (unsigned int i = 1; i < DEFAULT_SIGNAL_SIZE_MAX; i++) {
-			glVertex3f(static_cast<float>(DEFAULT_TIME_STEP * (i - 1)), points[first_value] / DEFAULT_VALUES_MULTIPLIER, DEFAULT_Z_STEP * signal_id);
-			glVertex3f(static_cast<float>(DEFAULT_TIME_STEP * i), points[i] / DEFAULT_VALUES_MULTIPLIER, DEFAULT_Z_STEP * signal_id);
-			first_value = i;
-		}
-		glEnd();
-	}
-	else {
-		// Draw trapezoids - integrals below each line
-		glLineWidth(1);
-		for (unsigned int i = 1; i < DEFAULT_SIGNAL_SIZE_MAX; i++) {
-		glBegin(GL_QUADS);
-		glColor3f(0.8f, 0.8f, 1.0f);
-		set_colour(signal_id % 6);
-			glVertex3f(static_cast<float>(DEFAULT_TIME_STEP * (i - 1)), points[first] / DEFAULT_VALUES_MULTIPLIER, DEFAULT_Z_STEP * signal_id);
-			glVertex3f(static_cast<float>(DEFAULT_TIME_STEP * i), points[i] / DEFAULT_VALUES_MULTIPLIER, DEFAULT_Z_STEP * signal_id);
-			glVertex3f(static_cast<float>(DEFAULT_TIME_STEP * (i - 1)), 0.0f, DEFAULT_Z_STEP * signal_id);
-			first = i;
-		glEnd();
-		}
+	case 0: // White
+		glColor3f(1.0, 1.0, 1.0);
+		break;
+	case 1: // Green
+		glColor3f(0.0, 1.0, 0.0);
+		break;
+	case 2: // Blue
+		glColor3f(0.0, 0.0, 1.0);
+		break;
+	case 3: // Yellow
+		glColor3f(1.0, 1.0, 0.0);
+		break;
+	case 4: //
+		glColor3f(0.0, 1.0, 1.0);
+		break;
+	case 5: //
+		glColor3f(1.0, 0.0, 1.0);
+		break;
+	case -1: // Red
+		glColor3f(1.0, 0.0, 0.0);
+		break;
 	}
 }
 
-// Display Callback function
-void display() {
+void simulate_tbb2(tbb::concurrent_vector<Particle>& particles, double total_time_steps, double time_step, size_t particle_count,
+	size_t universe_size_x, size_t universe_size_y) {
 
-	//  Clear screen and Z-buffer
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	// Simulate
+	for (double current_time_step = 0.0; current_time_step < total_time_steps; current_time_step += time_step) {
 
-	// Reset transformations
-	glLoadIdentity();
+		parallel_for(tbb::blocked_range<size_t>(0, particle_count),
+			[&](const tbb::blocked_range<size_t>& r) {
+			Particle current_particle = particles[r.begin()]; // Thread local variable
+			for (size_t i = r.begin(); i != r.end(); ++i) {
+				current_particle = particles[i];
+				for (size_t j = i + 1; j < particle_count; ++j) { // Calculate pairs of accelerations
+					current_particle.add_acceleration_pairwise(particles[j]);
+				}
+				particles[i] = current_particle;
+			}
+		}
+		);
 
-	// Set the camera viewpoint
-	gluLookAt(eyes_x, eyes_y, eyes_z,
-		eyes_x + look_x, 1.0f, eyes_z + look_z,
-		0.0f, 2.0f, 0.0f);
-
-	// Print helpful information to the console
-	printf("scale, eyesx, eyesy, eyesz, rotate_x, rotate_y: %f %f %f %f %f %f \n", scale_percentage, eyes_x, eyes_y, eyes_z, rotate_x, rotate_y);
-
-	// Draw the grid, axis, labels, divisions
-	draw_3d_cartesian_system();
-
-	// Create the host (local) variables
-	unsigned int i = 0;
-	float *ansiC_C1 = static_cast<float*>(malloc(sizeof(float)*DEFAULT_SIGNAL_SIZE_MAX));
-	float *ansiC_C2 = static_cast<float*>(malloc(sizeof(float)*DEFAULT_SIGNAL_SIZE_MAX));
-	float *ansiC_C3 = static_cast<float*>(malloc(sizeof(float)*DEFAULT_SIGNAL_SIZE_MAX));
-	float *ansiC_C4 = static_cast<float*>(malloc(sizeof(float)*DEFAULT_SIGNAL_SIZE_MAX));
-	float *ansiC_C5 = static_cast<float*>(malloc(sizeof(float)*DEFAULT_SIGNAL_SIZE_MAX));
-	float *ansiC_C6 = static_cast<float*>(malloc(sizeof(float)*DEFAULT_SIGNAL_SIZE_MAX));
-	float *ansiC_C7 = static_cast<float*>(malloc(sizeof(float)*DEFAULT_SIGNAL_SIZE_MAX));
-	float *ansiC_C8 = static_cast<float*>(malloc(sizeof(float)*DEFAULT_SIGNAL_SIZE_MAX));
-	float *ansiC_OUT = static_cast<float*>(malloc(sizeof(float)*DEFAULT_SIGNAL_SIZE_MAX));
-
-	// Pack Ansi C variables with data
-	for (i = 0; i < DEFAULT_SIGNAL_SIZE_MAX; i++) {
-		ansiC_C1[i] = 12.0f;
-		ansiC_C2[i] = 3.3f;
-		ansiC_C3[i] = 5.0f;
-		ansiC_C4[i] = 12.0f;
-		ansiC_C5[i] = 5.0f;
-		ansiC_C6[i] = 5.0f;
-		ansiC_C7[i] = 12.0f;
-		ansiC_C8[i] = 5.0f;
+		parallel_for(tbb::blocked_range<size_t>(0, particle_count),
+			[&](const tbb::blocked_range<size_t>& r) {
+			for (size_t index = r.begin(); index != r.end(); ++index) { // Using index range
+				particles[index].advance(time_step);
+			}
+		}
+		);
 	}
+}
 
-	// Initialize intermediate variables
-	float ansiC_D = 0.0f;
-	float ansiC_A1 = 0.0f;
-	float ansiC_A2 = 0.0f;
-	float ansiC_N1 = 0.0f;
-	float ansiC_A3 = 0.0f;
-	float ansiC_M1 = 0.0f;
-	float ansiC_ML1 = 0.0f;
-	float ansiC_A4 = 0.0f;
-	float ansiC_R1 = 0.0f;
-	float ansiC_I1 = 0.0f;
-	float ansiC_G1 = 0.0f;
-	float ansiC_A6 = 0.0f;
-	float ansiC_I2 = 0.0f;
-	float ansiC_M2 = 0.0f;
-	float ansiC_M3 = 0.0f;
-
-	// Calculate data
-	for (i = 0; i < DEFAULT_SIGNAL_SIZE_MAX; i++) {
-		ansiC_D = 0.0f;
-		ansiC_A1 = 0.0f;
-		ansiC_A2 = 0.0f;
-		ansiC_N1 = 0.0f;
-		ansiC_A3 = 0.0f;
-		ansiC_M1 = 0.0f;
-		ansiC_ML1 = 0.0f;
-		ansiC_A4 = 0.0f;
-		ansiC_R1 = 0.0f;
-		ansiC_I1 = 0.0f;
-		ansiC_G1 = 0.0f;
-		ansiC_A6 = 0.0f;
-		ansiC_I2 = 0.0f;
-		ansiC_M2 = 0.0f;
-		ansiC_M3 = 0.0f;
-
-		ansiC_A1 = ansiC_D + ansiC_C3[i];
-		ansiC_A2 = ansiC_C4[i] + ansiC_C5[i];
-		ansiC_N1 = (-1.0f) * ansiC_A2;
-		ansiC_A3 = ansiC_A2 + ansiC_C5[i];
-		ansiC_M1 = ansiC_A1 * ansiC_N1;
-		ansiC_ML1 = ansiC_M1 * ansiC_A2;
-		ansiC_A4 = ansiC_C1[i] + ansiC_C2[i];
-		ansiC_R1 = static_cast<float>(pow(ansiC_A4, ansiC_C2[i]));
-		ansiC_I1 = 1.0f / ansiC_R1;
-		ansiC_G1 = static_cast<float>(fabs(ansiC_N1));
-		ansiC_A6 = ansiC_G1 + ansiC_C6[i];
-		ansiC_I2 = 1.0f / ansiC_C7[i];
-		ansiC_M2 = ansiC_I2 * ansiC_A6;
-		ansiC_M3 = ansiC_C8[i] * ansiC_M2;
-		ansiC_OUT[i] = ansiC_M3;
-	}
-
-	// Do draw all the signals
-	draw_signal("OUT", ansiC_OUT, 0);
-	draw_signal("C1", ansiC_C1, 1);
-	draw_signal("C2", ansiC_C2, 2);
-	draw_signal("C3", ansiC_C3, 3);
-	draw_signal("C4", ansiC_C4, 4);
-	draw_signal("C5", ansiC_C5, 5);
-	draw_signal("C6", ansiC_C6, 6);
-	draw_signal("C7", ansiC_C7, 7);
-	draw_signal("C8", ansiC_C8, 8);
-
-	glFlush();
-	glutSwapBuffers();
+/* Initialize OpenGL Graphics */
+void initGL() {
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
+	glClearDepth(1.0f);                   // Set background depth to farthest
+	glEnable(GL_DEPTH_TEST);   // Enable depth testing for z-culling
+	glDepthFunc(GL_LEQUAL);    // Set the type of depth-test
+	glShadeModel(GL_SMOOTH);   // Enable smooth shading
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);  // Nice perspective corrections
 }
 
 // Callback for key presses
 void special_keys(int key_pressed, int x, int y) {
 	switch(key_pressed) {
+	case GLUT_KEY_F9:
+		eyes_x -= 0.25f;
+		break;
+	case GLUT_KEY_F10:
+		eyes_x += 0.25f;
+		break;
+	case GLUT_KEY_END:
+		eyes_y -= 0.25f;
+		break;
+	case GLUT_KEY_HOME:
+		eyes_y += 0.25f;
+		break;
 	// Right arrow - increase rotation by 5 degrees
 	case GLUT_KEY_RIGHT:
-		rotate_y += 5;
+		rotate_y -= 5;
 		break;
 	// Left arrow - decrease rotation by 5 degree
 	case GLUT_KEY_LEFT:
-		rotate_y -= 5;
+		rotate_y += 5;
 		break;
 	case GLUT_KEY_UP:
 		rotate_x -= 5;
@@ -360,152 +292,64 @@ void special_keys(int key_pressed, int x, int y) {
 	glutPostRedisplay();
 }
 
-// Main execution point
-int main2(int argc, char* argv[]) {
 
-	// Initialize GLUT and process user parameters
-	glutInit(&argc, argv);
+void display() {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffers
+	glMatrixMode(GL_MODELVIEW);     // To operate on model-view matrix
 
-	// Request float buffered true color window with Z-buffer
-	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+									// Render a color-cube consisting of 6 quads with different colors
+	glLoadIdentity();                 // Reset the model-view matrix
+	glTranslatef(1.5f, 0.0f, -7.0f);  // Move right and into the screen
 
-	// Create window
-	glutInitWindowPosition(100, 100);
-	glutInitWindowSize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
-	glutCreateWindow("CBD 3D Graph");
+	gluLookAt(eyes_x + 0.0f, eyes_y + 0.0f, eyes_z + 0.0f,
+		eyes_x, 2.0f, 0.0f,
+		0.0f, 2.0f, 0.0f);
 
-	// Enable Z-buffer depth test
-	glEnable(GL_DEPTH_TEST);
+	draw_3d_cartesian_system();
 
-	// Callback functions
-	glutDisplayFunc(display);
+	//simulate_serial2(particles, total_time_steps + 0.05, time_step, particle_count, universe_size_x, universe_size_y);
+	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y); // Advance Simulation with TBB
+
+	for (Particle& current_particle : particles_tbb) {
+
+		set_colour(static_cast<int>(current_particle.mass_) * 10);// Set Colour rotation based on ID
+
+		float x = static_cast<float>(current_particle.x_) / 400.0f;
+		float y = static_cast<float>(current_particle.y_) / 400.0f;
+		glBegin(GL_QUADS);
+		glVertex3f(x - 0.02 * current_particle.mass_, 0.0f, y - 0.012 * current_particle.mass_);
+		glVertex3f(x - 0.02 * current_particle.mass_, 0.0f, y);
+		glVertex3f(x, 0.0f, y);
+		glVertex3f(x, 0.0f, y - 0.02 * current_particle.mass_);
+		glEnd();
+	}	
+
+	glutSwapBuffers();  // Swap the front and back frame buffers (double buffering)
+}
+/* Main function: GLUT runs as a console application starting at main() */
+int main(int argc, char** argv) {
+
+	// User input data
+	particle_count = 400;
+	total_time_steps = 1;
+	universe_size_x = 800;
+	universe_size_y = 800;
+	thread_count = 4;
+
+	// Put random live cells
+	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y);
+	particles_tbb = ParticleHandler::to_concurrent_vector(particles);
+	simulate_tbb2(particles_tbb, total_time_steps + 0.05, time_step, particle_count, universe_size_x, universe_size_y); // Advance Simulation with TBB
+
+	glutInit(&argc, argv);            // Initialize GLUT
+	glutInitDisplayMode(GLUT_DOUBLE); // Enable double buffered mode
+	glutInitWindowSize(800, 800);   // Set the window's initial width & height
+	glutInitWindowPosition(50, 50); // Position the window's initial top-left corner
+	glutCreateWindow(title);          // Create window with the given title
+	glutDisplayFunc(display);       // Register callback handler for window re-paint event
+	glutReshapeFunc(reshape);       // Register callback handler for window re-size event
 	glutSpecialFunc(special_keys);
-
-	// Pass control to GLUT for events
-	glutMainLoop();
-
-	return 0;
-}
-
-void display2() {
-
-	//  Clear screen and Z-buffer
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	// Reset transformations
-	glLoadIdentity();
-
-	// Set the camera viewpoint
-	//gluLookAt(eyes_x + 0.0f, eyes_y + 0.0f, eyes_z + 0.0f,
-	//	eyes_x, 2.0f, 0.0f,
-	//	0.0f, 2.0f, 0.0f);
-
-	gluLookAt(
-		1.0f, 1.0f, 1.0f, // EyeAt vector
-		1.0f, 1.0f, 0.0f, // Center point
-		0.5f, 0.0f, 0.0f);// Up vector
-
-	// Print helpful information to the console
-	printf("scale, eyesx, eyesy, eyesz, rotate_x, rotate_y: %f %f %f %f %f %f \n", scale_percentage, eyes_x, eyes_y, eyes_z, rotate_x, rotate_y);
-	
-	glBegin(GL_QUADS);
-	set_colour(-1);
-	glVertex3f(1.9f, 1.9f, 0.0f);
-	glVertex3f(2.0f, 1.9f, 0.0f);
-	glVertex3f(2.0f, 2.0f, 0.0f);
-	glVertex3f(1.9f, 2.0f, 0.0f);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	set_colour(-1);
-	glVertex3f(0.0f, 0.0f, 0.0f);
-	glVertex3f(0.1f, 0.0f, 0.0f);
-	glVertex3f(0.1f, 0.1f, 0.0f);
-	glVertex3f(0.0f, 0.1f, 0.0f);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	set_colour(1);
-	glVertex3f(0.0f, 0.1f, 0.0f);
-	glVertex3f(0.1f, 0.1f, 0.0f);
-	glVertex3f(0.1f, 0.2f, 0.0f);
-	glVertex3f(0.0f, 0.2f, 0.0f);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	set_colour(2);
-	glVertex3f(0.0f, 0.2f, 0.0f);
-	glVertex3f(0.1f, 0.2f, 0.0f);
-	glVertex3f(0.1f, 0.3f, 0.0f);
-	glVertex3f(0.0f, 0.3f, 0.0f);
-	glEnd();
-	
-	glBegin(GL_QUADS);
-	set_colour(3);
-	glVertex3f(0.8f, 0.2f, 0.0f);
-	glVertex3f(0.9f, 0.2f, 0.0f);
-	glVertex3f(0.9f, 0.3f, 0.0f);
-	glVertex3f(0.8f, 0.3f, 0.0f);
-	glEnd();
-	
-	glBegin(GL_QUADS);
-	set_colour(4);
-	glVertex3f(0.9f, 0.2f, 0.0f);
-	glVertex3f(1.0f, 0.2f, 0.0f);
-	glVertex3f(1.0f, 0.3f, 0.0f);
-	glVertex3f(0.9f, 0.3f, 0.0f);
-	glEnd();
-	
-	glBegin(GL_QUADS);
-	set_colour(5);
-	glVertex3f(0.9f, 0.9f, 0.0f);
-	glVertex3f(1.0f, 0.9f, 0.0f);
-	glVertex3f(1.0f, 1.0f, 0.0f);
-	glVertex3f(0.9f, 1.0f, 0.0f);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	set_colour(0);
-	glVertex3f(-0.9f, -0.9f, 0.0f);
-	glVertex3f(-1.0f, -0.9f, 0.0f);
-	glVertex3f(-1.0f, -1.0f, 0.0f);
-	glVertex3f(-0.9f, -1.0f, 0.0f);
-	glEnd();
-
-	glBegin(GL_QUADS);
-	set_colour(1);
-	glVertex3f(-1.0f, -1.0f, 0.0f);
-	glVertex3f(-1.0f, 1.0f, 0.0f);
-	glVertex3f(1.0f, 1.0f, 0.0f);
-	glVertex3f(1.0f, -1.0f, 0.0f);
-	glEnd();
-
-	glFlush();
-	glutSwapBuffers();
-}
-
-int main(int argc, char* argv[]) {
-
-	// Initialize GLUT and process user parameters
-	glutInit(&argc, argv);
-
-	// Request float buffered true color window with Z-buffer
-	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
-
-	// Create window
-	glutInitWindowPosition(100, 100);
-	glutInitWindowSize(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT);
-	glutCreateWindow("Agent Simulation");
-
-	// Enable Z-buffer depth test
-	glEnable(GL_DEPTH_TEST);
-
-	// Callback functions
-	glutDisplayFunc(display2);
-	//glutSpecialFunc(special_keys);
-
-	// Pass control to GLUT for events
-	glutMainLoop();
-
-	return 0;
+	initGL();                       // Our own OpenGL initialization
+	glutTimerFunc(0, timer, 0);     // First timer call immediately [NEW]
+	glutMainLoop();                 // Enter the infinite event-processing loop
 }

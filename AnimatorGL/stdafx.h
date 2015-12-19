@@ -10,4 +10,19 @@
 #include <GL/freeglut.h>
 #include <stdlib.h>
 #include <math.h>
-#include <tiffio.h>     /* Sam Leffler's libtiff library. */
+#include <random>
+#include <tbb/parallel_for.h>
+#include <tbb/task_scheduler_init.h>
+#include <tbb/concurrent_vector.h>
+#include <tbb/cache_aligned_allocator.h>
+#include <tbb/concurrent_vector.h>
+#include <tbb/tick_count.h>
+#include <cassert>
+#include <iostream>
+#include <vector>
+#include <cmath>
+#include <string>
+#include <tiffio.h>
+#include "Particle.h"
+#include "ParticleHandler.h"
+#include "Settings.h"
