@@ -1,11 +1,11 @@
 #include "stdafx.h"
 
-void simulate_tbb(tbb::concurrent_vector<Particle>& particles, double total_time_steps, double time_step, size_t particle_count,
+void simulate_tbb(tbb::concurrent_vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count,
 	size_t universe_size_x, size_t universe_size_y) {
 
 	// Simulate
 	int png_step_counter = 0;
-	for (double current_time_step = 0.0; current_time_step < total_time_steps; current_time_step += time_step) {
+	for (float current_time_step = 0.0f; current_time_step < total_time_steps; current_time_step += time_step) {
 
 		parallel_for(tbb::blocked_range<size_t>(0, particle_count),
 			[&](const tbb::blocked_range<size_t>& r) {
@@ -39,11 +39,11 @@ void simulate_tbb(tbb::concurrent_vector<Particle>& particles, double total_time
 	}
 }
 
-void simulate_serial(std::vector<Particle>& particles, double total_time_steps, double time_step, size_t particle_count,
+void simulate_serial(std::vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count,
 	size_t universe_size_x, size_t universe_size_y) {
 
 	int png_step_counter = 0;
-	for (double current_time_step = 0.0; current_time_step < total_time_steps; current_time_step += time_step) {
+	for (float current_time_step = 0.0f; current_time_step < total_time_steps; current_time_step += time_step) {
 
 		for (size_t i = 0; i < particle_count; ++i) {
 			for (size_t j = 0; j < particle_count; ++j) {
@@ -69,10 +69,10 @@ void simulate_serial(std::vector<Particle>& particles, double total_time_steps, 
 int main4()
 {
 	int thread_count = DEFAULT_NUMBER_OF_THREADS;
-	double gravity = GRAVITATIONAL_CONSTANT;
+	float gravity = GRAVITATIONAL_CONSTANT;
 	size_t particle_count = DEFAULT_PARTICLE_COUNT;
-	double total_time_steps = DEFAULT_TOTAL_TIME_STEPS;
-	double time_step = TIME_STEP;
+	float total_time_steps = DEFAULT_TOTAL_TIME_STEPS;
+	float time_step = TIME_STEP;
 	size_t universe_size_x = UNIVERSE_SIZE_X;
 	size_t universe_size_y = UNIVERSE_SIZE_Y;
 
@@ -89,8 +89,8 @@ int main4()
 	auto xy = _mm_setr_pd(0.5, 1.5);
 	auto interacting_xy = _mm_setr_pd(1.5, 2.5);
 	auto addition3 = _mm_add_sd(xy, interacting_xy);
-	auto added_double = addition3.m128d_f64[0];	
-	std::cout << "added xy? (0.5 + 1.5):" << std::to_string(added_double) << std::endl;
+	auto added_float = addition3.m128d_f64[0];	
+	std::cout << "added xy? (0.5 + 1.5):" << std::to_string(added_float) << std::endl;
 
 	if (total_time_steps > 0.0 && particle_count > 0 && universe_size_x > 0 && universe_size_y > 0) {
 		

@@ -3,23 +3,23 @@
 void Particle::add_acceleration_pairwise(Particle& interacting_particle) {
 
 	// Get distances
-	double dx = interacting_particle.x_ - x_;
-	double dy = interacting_particle.y_ - y_;
+	float dx = interacting_particle.x_ - x_;
+	float dy = interacting_particle.y_ - y_;
 
 	// Square of distances
-	double distance_square = dx * dx + dy * dy;
+	float distance_square = dx * dx + dy * dy;
 
 	// Keep a minimum square of distance
 	if (distance_square < MIN_DISTANCE)
 		distance_square = MIN_DISTANCE;
 
-	double distance = sqrt(distance_square);
+	float distance = sqrt(distance_square);
 
 	velocity_x_ = dx / distance;
 	velocity_y_ = dy / distance;
 
-	double acceleration_factor = (GRAVITATIONAL_CONSTANT / distance_square) * mass_;
-	double interacting_acceleration_factor = (GRAVITATIONAL_CONSTANT / distance_square) * interacting_particle.mass_;
+	float acceleration_factor = (GRAVITATIONAL_CONSTANT / distance_square) * mass_;
+	float interacting_acceleration_factor = (GRAVITATIONAL_CONSTANT / distance_square) * interacting_particle.mass_;
 
 	// Apply accelerations
 	acceleration_x_ -= acceleration_factor * velocity_x_;
@@ -32,29 +32,29 @@ void Particle::add_acceleration_pairwise(Particle& interacting_particle) {
 void Particle::add_acceleration(const Particle& interacting_particle) {
 
 	// Get distances
-	double dx = interacting_particle.x_ - x_;
-	double dy = interacting_particle.y_ - y_;
+	float dx = interacting_particle.x_ - x_;
+	float dy = interacting_particle.y_ - y_;
 
 	// Square of distances
-	double distance_square = dx * dx + dy * dy;
+	float distance_square = dx * dx + dy * dy;
 	
 	// Keep a minimum square of distance
 	if (distance_square < MIN_DISTANCE)
 		distance_square = MIN_DISTANCE;
 	
-	double distance = sqrt(distance_square);
+	float distance = sqrt(distance_square);
 
 	velocity_x_ = dx / distance;
 	velocity_y_ = dy / distance;		
 
-	double acceleration_factor = (GRAVITATIONAL_CONSTANT / distance_square) * mass_;
+	float acceleration_factor = (GRAVITATIONAL_CONSTANT / distance_square) * mass_;
 
 	// Apply accelerations
 	acceleration_x_ -= acceleration_factor * velocity_x_;
 	acceleration_y_ -= acceleration_factor * velocity_y_;
 }
 
-void Particle::advance(double time_step) {
+void Particle::advance(float time_step) {
 
 	// Add accelerations on velocities
 	velocity_x_ += time_step * acceleration_x_;
@@ -82,6 +82,6 @@ void Particle::advance(double time_step) {
 	}
 
 	// Reset accelerations
-	acceleration_x_ = 0.0;
-	acceleration_y_ = 0.0;
+	acceleration_x_ = 0.0f;
+	acceleration_y_ = 0.0f;
 }
