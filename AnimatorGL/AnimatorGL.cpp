@@ -337,19 +337,19 @@ void display() {
 
 	simulate_tbb2(particles_tbb, total_time_steps, time_step * 1.0f, particle_count, universe_size_x, universe_size_y); // Advance Simulation with TBB
 
-	glBegin(GL_QUADS);
+	//glBegin(GL_QUADS);
+
 	for (Particle& current_particle : particles_tbb) {
-
-		set_colour(static_cast<int>(current_particle.mass_) * 10);// Set Colour rotation based on ID
-
+		
 		float x = static_cast<float>(current_particle.x_) / 400.0f;
 		float y = static_cast<float>(current_particle.y_) / 400.0f;
-		glVertex3f(x - 0.02 * current_particle.mass_, 0.0f, y - 0.012 * current_particle.mass_);
-		glVertex3f(x - 0.02 * current_particle.mass_, 0.0f, y);
+		
+		glPointSize(current_particle.mass_ * 4.0f);
+		set_colour(static_cast<int>(current_particle.mass_ * 10.0f) % 10);// Set Colour rotation based on ID
+		glBegin(GL_POINTS);
 		glVertex3f(x, 0.0f, y);
-		glVertex3f(x, 0.0f, y - 0.02 * current_particle.mass_);
+		glEnd();
 	}
-	glEnd();
 
 	glutSwapBuffers();  // Swap the front and back frame buffers (float buffering)
 }
