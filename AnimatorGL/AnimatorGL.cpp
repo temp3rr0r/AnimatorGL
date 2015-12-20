@@ -32,6 +32,49 @@ float scale_percentage = 1.0f;
 bool show_grid = true; // Toggle grid on/off
 bool show_areas = true; // Toggle grid on/off
 
+
+enum {
+	BRASS, RED_PLASTIC, EMERALD, SLATE
+} MaterialType;
+enum {
+	TORUS_MATERIAL = 1, TEAPOT_MATERIAL = 2, ICO_MATERIAL = 3
+} MaterialDisplayList;
+enum {
+	LIGHT_OFF, LIGHT_RED, LIGHT_WHITE, LIGHT_GREEN
+} LightValues;
+
+GLfloat red_light[] =
+{ 1.0, 0.0, 0.0, 1.0 }, green_light[] =
+{ 0.0, 1.0, 0.0, 1.0 }, white_light[] =
+{ 1.0, 1.0, 1.0, 1.0 };
+GLfloat left_light_position[] =
+{ -1.0, 0.0, 1.0, 0.0 }, right_light_position[] =
+{ 1.0, 0.0, 1.0, 0.0 };
+GLfloat brass_ambient[] =
+{ 0.33, 0.22, 0.03, 1.0 }, brass_diffuse[] =
+{ 0.78, 0.57, 0.11, 1.0 }, brass_specular[] =
+{ 0.99, 0.91, 0.81, 1.0 }, brass_shininess = 27.8;
+GLfloat red_plastic_ambient[] =
+{ 0.0, 0.0, 0.0 }, red_plastic_diffuse[] =
+{ 0.5, 0.0, 0.0 }, red_plastic_specular[] =
+{ 0.7, 0.6, 0.6 }, red_plastic_shininess = 32.0;
+GLfloat emerald_ambient[] =
+{ 0.0215, 0.1745, 0.0215 }, emerald_diffuse[] =
+{ 0.07568, 0.61424, 0.07568 }, emerald_specular[] =
+{ 0.633, 0.727811, 0.633 }, emerald_shininess = 76.8;
+GLfloat slate_ambient[] =
+{ 0.02, 0.02, 0.02 }, slate_diffuse[] =
+{ 0.02, 0.01, 0.01 }, slate_specular[] =
+{ 0.4, 0.4, 0.4 }, slate_shininess = .78125;
+
+int shade_model = GL_SMOOTH;
+char *left_light, *right_light;
+char *ico_material, *teapot_material, *torus_material;
+
+int spinning = 0, moving = 0;
+int beginx, beginy;
+int scaling;
+
 float oldMouseX;
 float mouseX;
 float oldMouseY;
@@ -40,8 +83,8 @@ float mouseY;
 int thread_count = DEFAULT_NUMBER_OF_THREADS;
 float gravity = GRAVITATIONAL_CONSTANT;
 size_t particle_count = DEFAULT_PARTICLE_COUNT;
-float total_time_steps = DEFAULT_TOTAL_TIME_STEPS;
-float time_step = TIME_STEP;
+float total_time_steps = 1.0f;
+float time_step = 1.0f;
 size_t universe_size_x = UNIVERSE_SIZE_X;
 size_t universe_size_y = UNIVERSE_SIZE_Y;
 
@@ -59,6 +102,14 @@ int refreshMills = 16;        // refresh interval in milliseconds [NEW]
 
 /* Initialize OpenGL Graphics */
 
+
+void reset_particles() {
+	particles.clear();
+	particles_tbb.clear();
+	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y);
+	particles_tbb = ParticleHandler::to_concurrent_vector(particles);
+}
+
 // Helpful function to draw a char* array of characters
 void draw_string(void * font, char *s, float x, float y, float z) {
 	unsigned int i;
@@ -75,12 +126,12 @@ void draw_3d_cartesian_system() {
 	float hud_y = eyes_y + 1.7f;
 	float hud_z = eyes_z + 2.3f;
 	
-	std::cout << "= Parallel N-Body simulation serially and with Thread Building Blocks =" << std::endl;
-	std::cout << "Number of threads: " << thread_count << std::endl;
-	std::cout << "Total time steps: " << total_time_steps << std::endl;
-	std::cout << "Time step: " << time_step << std::endl;
-	std::cout << "Particle count: " << particle_count << std::endl << std::endl;
-	std::cout << "Universe Size: " << universe_size_x << " x " << universe_size_y << std::endl << std::endl;
+//	std::cout << "= Parallel N-Body simulation serially and with Thread Building Blocks =" << std::endl;
+//	std::cout << "Number of threads: " << thread_count << std::endl;
+//	std::cout << "Total time steps: " << total_time_steps << std::endl;
+//	std::cout << "Time step: " << time_step << std::endl;
+//	std::cout << "Particle count: " << particle_count << std::endl << std::endl;
+//	std::cout << "Universe Size: " << universe_size_x << " x " << universe_size_y << std::endl << std::endl;
 
 	glColor3f(1.0, 1.0, 1.0);
 	draw_string(GLUT_BITMAP_TIMES_ROMAN_24, "Parallel N-Body simulation with TBB", hud_x + 3.5f, hud_y, hud_z); // Chart Legend	
@@ -292,6 +343,9 @@ void special_keys(int key_pressed, int x, int y) {
 	case GLUT_KEY_UP:
 		rotate_x -= 5;
 		break;
+	case GLUT_KEY_F8:
+		reset_particles();
+		break;
 	case GLUT_KEY_DOWN:
 		rotate_x += 5;
 		break;
@@ -319,6 +373,26 @@ void special_keys(int key_pressed, int x, int y) {
 	glutPostRedisplay();
 }
 
+void
+mouse(int button, int state, int x, int y)
+{
+	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+		spinning = 0;
+		glutIdleFunc(NULL);
+		moving = 1;
+		beginx = x;
+		beginy = y;
+		if (glutGetModifiers() & GLUT_ACTIVE_SHIFT) {
+			scaling = 1;
+		}
+		else {
+			scaling = 0;
+		}
+	}
+	if (button == GLUT_LEFT_BUTTON && state == GLUT_UP) {
+		moving = 0;
+	}
+}
 
 
 void display() {
@@ -335,9 +409,7 @@ void display() {
 
 	draw_3d_cartesian_system();
 
-	simulate_tbb2(particles_tbb, total_time_steps, time_step * 1.0f, particle_count, universe_size_x, universe_size_y); // Advance Simulation with TBB
-
-	//glBegin(GL_QUADS);
+	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y); // Advance Simulation with TBB
 
 	for (Particle& current_particle : particles_tbb) {
 		
@@ -354,44 +426,50 @@ void display() {
 	glutSwapBuffers();  // Swap the front and back frame buffers (float buffering)
 }
 
-void mouseButton(int button, int state, int x, int y) {
 
-	// only start motion if the left button is pressed
-	if (button == GLUT_LEFT_BUTTON) {
+void
+controlLights(int value)
+{
+	switch (value) {
 
-		// when the button is released
-		if (state == GLUT_UP) {
-			//angle += deltaAngle;
-			//xOrigin = -1;
+#ifdef GL_MULTISAMPLE_SGIS
+	case 3:
+		if (glIsEnabled(GL_MULTISAMPLE_SGIS)) {
+			glDisable(GL_MULTISAMPLE_SGIS);
 		}
-		else {// state = GLUT_DOWN
-			//xOrigin = x;
+		else {
+			glEnable(GL_MULTISAMPLE_SGIS);
 		}
+		break;
+#endif
+	case 4:
+		glutFullScreen();
+		break;
+	case 5:
+		exit(0);
+		break;
 	}
+	glutPostRedisplay();
 }
 
-void mouseMove(int x, int y) {
 
-	// this will only be true when the left button is down
-	//if (xOrigin >= 0) {
-
-		// update deltaAngle
-		//deltaAngle = (x - xOrigin) * 0.001f;
-
-		// update camera's direction
-		//lx = sin(angle + deltaAngle);
-		//lz = -cos(angle + deltaAngle);
-	//}
+void main_menu_select(int value)
+{
+	if (value == 666)
+		exit(0);
+	glShadeModel(shade_model = value);
+	glutPostRedisplay();
 }
 
 /* Main function: GLUT runs as a console application starting at main() */
 int main(int argc, char** argv) {
 
+	int left_light_m, right_light_m, torus_m, teapot_m, ico_m;
 	// User input data
 	particle_count = 400;
-	total_time_steps = 0.10;
-	universe_size_x = 1600;
-	universe_size_y = 1200;
+	total_time_steps = 0.02;
+	universe_size_x = 800;
+	universe_size_y = 600;
 	thread_count = 4;
 
 	// Put random live cells
@@ -405,16 +483,41 @@ int main(int argc, char** argv) {
 	glutInitWindowSize(800, 600);   // Set the window's initial width & height
 	glutInitWindowPosition(50, 50); // Position the window's initial top-left corner
 	glutCreateWindow(title);          // Create window with the given title
-	
+
+	glutMouseFunc(mouse);
+
 	initGL();                       // Our own OpenGL initialization
 
+	glDisable(GL_DEPTH_TEST);
+	glClearColor(0.1, 0.1, 0.1, 1.0);
+	glEnable(GL_POINT_SMOOTH);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);	//also try GL_LINE
+
 	glutDisplayFunc(display);       // Register callback handler for window re-paint event
+
+#define LIGHT_MENU_ENTRIES() \
+    glutAddMenuEntry("Disable", LIGHT_OFF); \
+    glutAddMenuEntry("Red", LIGHT_RED); \
+    glutAddMenuEntry("White", LIGHT_WHITE); \
+    glutAddMenuEntry("Green", LIGHT_GREEN);
+#define MATERIAL_MENU_ENTRIES() \
+    glutAddMenuEntry("Brass", BRASS); \
+    glutAddMenuEntry("Red plastic", RED_PLASTIC); \
+    glutAddMenuEntry("Emerald", EMERALD); \
+    glutAddMenuEntry("Slate", SLATE);
+
+
+	glutCreateMenu(main_menu_select);
+	glutAddMenuEntry("Smooth shading", GL_SMOOTH);
+	glutAddMenuEntry("Flat shading", GL_FLAT);
+	glutAddMenuEntry("Quit", 666);
+	glutAttachMenu(GLUT_RIGHT_BUTTON);
+
 	glutReshapeFunc(reshape);       // Register callback handler for window re-size event
 	glutSpecialFunc(special_keys);
 	
-	// here are the two new functions
-	//glutMouseFunc(mouseButton);
-	glutMotionFunc(mouseMove);
 
 	glutTimerFunc(0, timer, 0);     // First timer call immediately [NEW]
 	glutMainLoop();                 // Enter the infinite event-processing loop
