@@ -87,6 +87,7 @@ float total_time_steps = 1.0f;
 float time_step = 1.0f;
 size_t universe_size_x = UNIVERSE_SIZE_X;
 size_t universe_size_y = UNIVERSE_SIZE_Y;
+size_t universe_size_z = UNIVERSE_SIZE_Z;
 
 std::vector<Particle> particles;
 tbb::concurrent_vector<Particle, tbb::cache_aligned_allocator<Particle>> particles_tbb;
@@ -102,11 +103,16 @@ int refreshMills = 16;        // refresh interval in milliseconds [NEW]
 
 /* Initialize OpenGL Graphics */
 
+void add_particles() {	
+	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y, universe_size_z);
+	particles_tbb = ParticleHandler::to_concurrent_vector(particles);
+	particle_count = particles_tbb.size();
+}
 
 void reset_particles() {
 	particles.clear();
 	particles_tbb.clear();
-	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y);
+	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y, universe_size_z);
 	particles_tbb = ParticleHandler::to_concurrent_vector(particles);
 }
 
@@ -135,22 +141,22 @@ void draw_3d_cartesian_system() {
 
 	glColor3f(1.0, 1.0, 1.0);
 	draw_string(GLUT_BITMAP_TIMES_ROMAN_24, "Parallel N-Body simulation with TBB", hud_x + 3.5f, hud_y, hud_z); // Chart Legend	
-	glColor3f(1.0, 1.0, 1.0);
-	draw_string(GLUT_BITMAP_HELVETICA_12, "Toggle 2D Signal Areas: F4 key.", hud_x + 0.5f, hud_y, hud_z - 0.5f);
-	draw_string(GLUT_BITMAP_HELVETICA_12, "Rotation: UP, DOWN, LEFT, RIGHT keys.", hud_x + 0.4f, hud_y, hud_z - 0.70f);
-	draw_string(GLUT_BITMAP_HELVETICA_12, "Scale IN/OUT: F1, F2 keys.", hud_x + 0.3f, hud_y, hud_z - 1.5f);
-	draw_string(GLUT_BITMAP_HELVETICA_12, "Toggle grid: F3 key.", hud_x + 0.1f, hud_y, hud_z - 2.5f);
-	
-	
-	char num_of_threads[30];
-	snprintf(num_of_threads, sizeof(num_of_threads), "Number of threads: %d", thread_count);
-	draw_string(GLUT_BITMAP_HELVETICA_12, num_of_threads, hud_x + 0.1f, hud_y, hud_z - 3.0f);
-
-	draw_string(GLUT_BITMAP_HELVETICA_12, "Total Time steps:", hud_x + 0.5f, hud_y, hud_z - 0.5f);
-	draw_string(GLUT_BITMAP_HELVETICA_12, "Particle Count:", hud_x + 0.5f, hud_y, hud_z - 0.5f);
-	draw_string(GLUT_BITMAP_HELVETICA_12, "Time Step:", hud_x + 0.5f, hud_y, hud_z - 0.5f);
-	draw_string(GLUT_BITMAP_HELVETICA_12, "Particle Count:", hud_x + 0.5f, hud_y, hud_z - 0.5f);
-	draw_string(GLUT_BITMAP_HELVETICA_12, "Universe Size:", hud_x + 0.5f, hud_y, hud_z - 0.5f);
+//	glColor3f(1.0, 1.0, 1.0);
+//	draw_string(GLUT_BITMAP_HELVETICA_12, "Toggle 2D Signal Areas: F4 key.", hud_x + 0.5f, hud_y, hud_z - 0.5f);
+//	draw_string(GLUT_BITMAP_HELVETICA_12, "Rotation: UP, DOWN, LEFT, RIGHT keys.", hud_x + 0.4f, hud_y, hud_z - 0.70f);
+//	draw_string(GLUT_BITMAP_HELVETICA_12, "Scale IN/OUT: F1, F2 keys.", hud_x + 0.3f, hud_y, hud_z - 1.5f);
+//	draw_string(GLUT_BITMAP_HELVETICA_12, "Toggle grid: F3 key.", hud_x + 0.1f, hud_y, hud_z - 2.5f);
+//	
+//	
+//	char num_of_threads[30];
+//	snprintf(num_of_threads, sizeof(num_of_threads), "Number of threads: %d", thread_count);
+//	draw_string(GLUT_BITMAP_HELVETICA_12, num_of_threads, hud_x + 0.1f, hud_y, hud_z - 3.0f);
+//
+//	draw_string(GLUT_BITMAP_HELVETICA_12, "Total Time steps:", hud_x + 0.5f, hud_y, hud_z - 0.5f);
+//	draw_string(GLUT_BITMAP_HELVETICA_12, "Particle Count:", hud_x + 0.5f, hud_y, hud_z - 0.5f);
+//	draw_string(GLUT_BITMAP_HELVETICA_12, "Time Step:", hud_x + 0.5f, hud_y, hud_z - 0.5f);
+//	draw_string(GLUT_BITMAP_HELVETICA_12, "Particle Count:", hud_x + 0.5f, hud_y, hud_z - 0.5f);
+//	draw_string(GLUT_BITMAP_HELVETICA_12, "Universe Size:", hud_x + 0.5f, hud_y, hud_z - 0.5f);
 
 	// Rotate when user changes rotate_x and rotate_y angles
 	glRotatef(rotate_x, 2.0, 0.0, 0.0);
@@ -278,8 +284,100 @@ void set_colour(int colour) {
 	}
 }
 
-void simulate_tbb2(tbb::concurrent_vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count,
+
+void simulate_serial_barnes_hut(std::vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count,
 	size_t universe_size_x, size_t universe_size_y) {
+
+	int png_step_counter = 0;
+	QuadParticleTree* quad_tree;
+
+	for (float current_time_step = 0.0; current_time_step < total_time_steps; current_time_step += time_step) {
+
+		// (Re)Allocate all the vector particles into the tree
+		quad_tree = ParticleHandler::to_quad_tree(particles, universe_size_x * 2, universe_size_y * 2, universe_size_z * 2);
+
+		// Apply acceleration force to all the particles of the vector
+		for (Particle& current_particle : particles)
+			quad_tree->apply_acceleration(current_particle);
+
+		// Advance the particles in time
+		for (Particle& current_particle : particles)
+			current_particle.advance(time_step); // Advance the particle positions in time
+
+												 // Recursively de-allocate the tree
+		delete quad_tree;
+
+		++png_step_counter;
+		if (SAVE_INTERMEDIATE_PNG_STEPS && SAVE_PNG && png_step_counter >= SAVE_PNG_EVERY) {
+
+			png_step_counter = 0;
+			std::string file_name = "universe_serial_barnes_hut_timestep_" + std::to_string(current_time_step) + ".png";
+
+			// TODO: fix the ability to print universe
+			//ParticleHandler::universe_to_png(particles, universe_size_x, universe_size_y, file_name.c_str());
+		}
+	}
+}
+
+void simulate_parallel_barnes_hut(tbb::concurrent_vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count,
+	size_t universe_size_x, size_t universe_size_y) {
+
+	int png_step_counter = 0;
+	tbb::atomic<QuadParticleTree*> atomic_quad_tree;
+
+	for (float current_time_step = 0.0; current_time_step < total_time_steps; current_time_step += time_step) {
+
+		// (Re)Allocate all the vector particles into the tree			
+		atomic_quad_tree = new QuadParticleTree(Particle(0.0f, 0.0f, 0.0f, 0.0f), //Crate a new quad tree with limits from zero, up to grid size x and y
+			Particle(static_cast<float>(universe_size_x) * 2, static_cast<float>(universe_size_y) * 2, 0.0f, 0.0f)); // x2 due to an issue on the tree min/max bounds
+		
+	// Insert the points in the quad tree
+		TreeParticle *quad_tree_particles = new TreeParticle[particle_count];
+
+		parallel_for(tbb::blocked_range<size_t>(0, particle_count), // Get range for this thread
+			[&](const tbb::blocked_range<size_t>& r) {
+			for (size_t index = r.begin(); index != r.end(); ++index) { // Using index range
+				quad_tree_particles[index].set_particle(particles[index]);
+			}
+		}); // Implicit barrier
+
+			// Must be performed serially. Parallel version requires lots of safe regions anyway
+		for (size_t i = 0; i < particle_count; ++i) {
+			atomic_quad_tree->insert(quad_tree_particles + i);
+		}
+
+		parallel_for(tbb::blocked_range<size_t>(0, particle_count), // Get range for this thread
+			[&](const tbb::blocked_range<size_t>& r) {
+			for (size_t index = r.begin(); index != r.end(); ++index) { // Using index range
+				atomic_quad_tree->apply_acceleration(particles[index]);
+			}
+		}); // Implicit barrier
+
+			// Now that all the new accelerations were calculated, advance the particles in time
+		parallel_for(tbb::blocked_range<size_t>(0, particle_count), // Get range for this thread
+			[&](const tbb::blocked_range<size_t>& r) {
+			for (size_t index = r.begin(); index != r.end(); ++index) { // Using index range
+				particles[index].advance(time_step);
+			}
+		}
+		); // Implicit barrier
+
+		   // Recursively de-allocate the tree
+		delete atomic_quad_tree;
+
+		++png_step_counter;
+		if (SAVE_INTERMEDIATE_PNG_STEPS && SAVE_PNG && png_step_counter >= SAVE_PNG_EVERY) {
+
+			png_step_counter = 0;
+			std::string file_name = "universe_serial_barnes_hut_timestep_" + std::to_string(current_time_step) + ".png";
+
+			// TODO: fix the ability to print universe
+			//ParticleHandler::universe_to_png(ParticleHandler::to_vector(particles), universe_size_x, universe_size_y, file_name.c_str());
+		}
+	}
+}
+
+void simulate_tbb2(tbb::concurrent_vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count) {
 
 	// Simulate
 	for (float current_time_step = 0.0f; current_time_step < total_time_steps; current_time_step += time_step) {
@@ -289,14 +387,14 @@ void simulate_tbb2(tbb::concurrent_vector<Particle>& particles, float total_time
 			Particle current_particle = particles[r.begin()]; // Thread local variable
 			for (size_t i = r.begin(); i != r.end(); ++i) {
 				current_particle = particles[i];
-				for (size_t j = i + 1; j < particle_count; ++j) { // Calculate pairs of accelerations
-					current_particle.add_acceleration_pairwise(particles[j]);
+				for (size_t j = i; j != particle_count; ++j) { // Calculate pairs of accelerations
+					current_particle.add_acceleration_pairwise(particles[j]); // Pairwise eliminates branching
 				}
 				particles[i] = current_particle;
 			}
 		}
 		);
-
+				
 		parallel_for(tbb::blocked_range<size_t>(0, particle_count),
 			[&](const tbb::blocked_range<size_t>& r) {
 			for (size_t index = r.begin(); index != r.end(); ++index) { // Using index range
@@ -307,25 +405,9 @@ void simulate_tbb2(tbb::concurrent_vector<Particle>& particles, float total_time
 	}
 }
 
-/* Initialize OpenGL Graphics */
-void initGL() {
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
-	glClearDepth(1.0f);                   // Set background depth to farthest
-	glEnable(GL_DEPTH_TEST);   // Enable depth testing for z-culling
-	glDepthFunc(GL_LEQUAL);    // Set the type of depth-test
-	glShadeModel(GL_SMOOTH);   // Enable smooth shading
-	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);  // Nice perspective corrections
-}
-
 // Callback for key presses
 void special_keys(int key_pressed, int x, int y) {
 	switch(key_pressed) {
-	case GLUT_KEY_F9:
-		eyes_x -= 0.25f;
-		break;
-	case GLUT_KEY_F10:
-		eyes_x += 0.25f;
-		break;
 	case GLUT_KEY_END:
 		eyes_y -= 0.25f;
 		break;
@@ -342,9 +424,6 @@ void special_keys(int key_pressed, int x, int y) {
 		break;
 	case GLUT_KEY_UP:
 		rotate_x -= 5;
-		break;
-	case GLUT_KEY_F8:
-		reset_particles();
 		break;
 	case GLUT_KEY_DOWN:
 		rotate_x += 5;
@@ -367,6 +446,18 @@ void special_keys(int key_pressed, int x, int y) {
 			show_areas = false;
 		else
 			show_areas = true;
+		break;
+	case GLUT_KEY_F7:
+		add_particles();
+		break;
+	case GLUT_KEY_F8:
+		reset_particles();
+		break;
+	case GLUT_KEY_F9:
+		eyes_x -= 0.25f;
+		break;
+	case GLUT_KEY_F10:
+		eyes_x += 0.25f;
 		break;
 	}
 	//  Request display update
@@ -409,18 +500,31 @@ void display() {
 
 	draw_3d_cartesian_system();
 
-	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y); // Advance Simulation with TBB
+	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count); // Advance Simulation with TBB
 
-	for (Particle& current_particle : particles_tbb) {
+	for (const Particle& current_particle : particles_tbb) {
 		
-		float x = static_cast<float>(current_particle.x_) / 400.0f;
-		float y = static_cast<float>(current_particle.y_) / 400.0f;
-		
+		float x = static_cast<float>(current_particle.x_) / (universe_size_x / 2.0f);
+		float y = static_cast<float>(current_particle.y_) / (universe_size_y / 2.0f);
+		float z = static_cast<float>(current_particle.z_) / (universe_size_z / 2.0f);
+
 		glPointSize(current_particle.mass_ * 4.0f);
-		set_colour(static_cast<int>(current_particle.mass_ * 10.0f) % 10);// Set Colour rotation based on ID
+		set_colour(static_cast<int>(current_particle.mass_ * 5.0f) % 10);// Set Colour rotation based on ID
 		glBegin(GL_POINTS);
-		glVertex3f(x, 0.0f, y);
+		glVertex3f(x, y, z);
 		glEnd();
+
+		/*glBegin(GL_TRIANGLES);
+		glVertex3f(x + 0.1f * (current_particle.velocity_x_), y + 0.1f * (current_particle.velocity_y_), z + 0.1f * (current_particle.velocity_z_));
+		glVertex3f(x + 0.1f, y, z);
+		glVertex3f(x - 0.1f, y, z);
+		glEnd();
+
+		glBegin(GL_LINES);
+		glVertex3f(x, y, z);
+		glVertex3f(x + 0.1f * (current_particle.velocity_x_), y + 0.1f * (current_particle.velocity_y_), z + 0.1f * (current_particle.velocity_z_));
+		glEnd();*/
+	
 	}
 
 	glutSwapBuffers();  // Swap the front and back frame buffers (float buffering)
@@ -466,35 +570,45 @@ int main(int argc, char** argv) {
 
 	int left_light_m, right_light_m, torus_m, teapot_m, ico_m;
 	// User input data
-	particle_count = 400;
-	total_time_steps = 0.02;
+	particle_count = 1000;
 	universe_size_x = 800;
-	universe_size_y = 600;
+	universe_size_y = 800;
+	universe_size_z = 800;
+	time_step = 1.5;
+	total_time_steps = 1.5;
 	thread_count = 4;
 
 	// Put random live cells
-	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y);
+	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y, universe_size_z);
 	particles_tbb = ParticleHandler::to_concurrent_vector(particles);
-	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y); // Advance Simulation with TBB
+	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count); // Advance Simulation with TBB
 
 	glutInit(&argc, argv);            // Initialize GLUT
 	
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH); // Enable float buffered mode
-	glutInitWindowSize(800, 600);   // Set the window's initial width & height
+	glutInitWindowSize(1600, 1200);   // Set the window's initial width & height
 	glutInitWindowPosition(50, 50); // Position the window's initial top-left corner
 	glutCreateWindow(title);          // Create window with the given title
 
 	glutMouseFunc(mouse);
-
-	initGL();                       // Our own OpenGL initialization
-
-	glDisable(GL_DEPTH_TEST);
-	glClearColor(0.1, 0.1, 0.1, 1.0);
+	
+	// Set the OpenGL texture mapping and blending parameters for this program.
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Set background color to black and opaque
+	glClearDepth(1.0f);                   // Set background depth to farthest
+	glEnable(GL_DEPTH_TEST);   // Enable depth testing for z-culling
+	glEnable(GL_TEXTURE_2D);
 	glEnable(GL_POINT_SMOOTH);
 	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+	glDisable(GL_CULL_FACE);
+	glDepthFunc(GL_LEQUAL);    // Set the type of depth-test
+	glShadeModel(GL_SMOOTH);   // Enable smooth shading
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);  // Nice perspective corrections		
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);	//also try GL_LINE
-
 	glutDisplayFunc(display);       // Register callback handler for window re-paint event
 
 #define LIGHT_MENU_ENTRIES() \
