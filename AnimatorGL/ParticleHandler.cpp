@@ -8,22 +8,25 @@ void ParticleHandler::allocate_random_particles(size_t particle_count, std::vect
 		std::uniform_real_distribution<> real_position_y(static_cast<float>(size_y) * 0.4f, static_cast<float>(size_y)* 0.5f);
 		std::uniform_real_distribution<> real_position_z(0, static_cast<float>(size_z));
 		std::normal_distribution<float> normal_mass(0.0, MAX_MASS);
-		std::normal_distribution<float> normal_speed(0.0, MAX_SPEED);
-		std::normal_distribution<float> normal_speed_y(0.0, MAX_SPEED);
+		std::normal_distribution<float> normal_speed(-MAX_SPEED, MAX_SPEED);
+		std::normal_distribution<float> normal_speed_y(-MAX_SPEED, MAX_SPEED);
 		std::uniform_real_distribution<> real_speed(0.0, MAX_SPEED);
 		std::uniform_real_distribution<> real_acceleration(0.0, MAX_ACCELERATION);
 		std::uniform_real_distribution<> real_mass(0.0, MAX_MASS);
 
 		for (size_t i = 0; i < particle_count; ++i)
 			particles.push_back(Particle(
-				//real_position_x(mt_engine), real_position_y(mt_engine), real_position_z(mt_engine),
 				real_position_x(mt_engine), real_position_x(mt_engine), real_position_z(mt_engine),
+				//real_position_x(mt_engine), real_position_x(mt_engine), real_position_z(mt_engine),
 				//, real_position_y(mt_engine), real_position_z(mt_engine),
-				// 0.0, 0.0, 0.0, real_mass(mt_engine), 0.0, 0.0, 0.0));
-				normal_speed_y(mt_engine), normal_speed(mt_engine), normal_speed_y(mt_engine),
-				//MAX_SPEED * MAX_SPEED, real_speed(mt_engine), MAX_SPEED * MAX_SPEED,
+				// 0.0, 0.0, 0.0,
+				//0.0, 0.0, 0.0,
+				MAX_SPEED * MAX_SPEED, real_speed(mt_engine), MAX_SPEED * MAX_SPEED,
+				real_mass(mt_engine), 
+				//0.0, 0.0, 0.0));
+				//normal_speed(mt_engine), real_speed(mt_engine), normal_speed_y(mt_engine),				
 				//real_position_x(mt_engine), real_position_x(mt_engine), real_position_x(mt_engine),
-				normal_mass(mt_engine),
+				//normal_mass(mt_engine),
 				real_acceleration(mt_engine), real_acceleration(mt_engine), real_acceleration(mt_engine)));
 	}
 

@@ -286,7 +286,7 @@ void set_colour(int colour) {
 
 
 void simulate_serial_barnes_hut(std::vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count,
-	size_t universe_size_x, size_t universe_size_y) {
+	size_t universe_size_x, size_t universe_size_y, size_t universe_size_z) {
 
 	int png_step_counter = 0;
 	QuadParticleTree* quad_tree;
@@ -320,7 +320,7 @@ void simulate_serial_barnes_hut(std::vector<Particle>& particles, float total_ti
 }
 
 void simulate_parallel_barnes_hut(tbb::concurrent_vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count,
-	size_t universe_size_x, size_t universe_size_y) {
+	size_t universe_size_x, size_t universe_size_y, size_t universe_size_z) {
 
 	int png_step_counter = 0;
 	tbb::atomic<QuadParticleTree*> atomic_quad_tree;
@@ -329,7 +329,7 @@ void simulate_parallel_barnes_hut(tbb::concurrent_vector<Particle>& particles, f
 
 		// (Re)Allocate all the vector particles into the tree			
 		atomic_quad_tree = new QuadParticleTree(Particle(0.0f, 0.0f, 0.0f, 0.0f), //Crate a new quad tree with limits from zero, up to grid size x and y
-			Particle(static_cast<float>(universe_size_x) * 2, static_cast<float>(universe_size_y) * 2, 0.0f, 0.0f)); // x2 due to an issue on the tree min/max bounds
+			Particle(static_cast<float>(universe_size_x) * 2, static_cast<float>(universe_size_y) * 2, static_cast<float>(universe_size_z) * 2, 0.0f)); // x2 due to an issue on the tree min/max bounds
 		
 	// Insert the points in the quad tree
 		TreeParticle *quad_tree_particles = new TreeParticle[particle_count];
@@ -500,7 +500,9 @@ void display() {
 
 	draw_3d_cartesian_system();
 
-	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count); // Advance Simulation with TBB
+	//simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count); // Advance Simulation with TBB
+	simulate_parallel_barnes_hut(particles_tbb, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y, universe_size_z);
+	//simulate_serial_barnes_hut(particles, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y, universe_size_z);
 
 	for (const Particle& current_particle : particles_tbb) {
 		
@@ -518,12 +520,12 @@ void display() {
 		glVertex3f(x + 0.1f * (current_particle.velocity_x_), y + 0.1f * (current_particle.velocity_y_), z + 0.1f * (current_particle.velocity_z_));
 		glVertex3f(x + 0.1f, y, z);
 		glVertex3f(x - 0.1f, y, z);
-		glEnd();
+		glEnd();*/
 
 		glBegin(GL_LINES);
 		glVertex3f(x, y, z);
 		glVertex3f(x + 0.1f * (current_particle.velocity_x_), y + 0.1f * (current_particle.velocity_y_), z + 0.1f * (current_particle.velocity_z_));
-		glEnd();*/
+		glEnd();
 	
 	}
 
@@ -570,7 +572,7 @@ int main(int argc, char** argv) {
 
 	int left_light_m, right_light_m, torus_m, teapot_m, ico_m;
 	// User input data
-	particle_count = 1000;
+	particle_count = 300;
 	universe_size_x = 800;
 	universe_size_y = 800;
 	universe_size_z = 800;

@@ -6,7 +6,7 @@
 
 // A Quad tree that stores collections of particles
 class QuadParticleTree {
-	static const uint8_t NUM_CHILDREN = 4; // Quad trees have 4 children
+	static const uint8_t NUM_CHILDREN = 8; // Quad trees have 4 children
 	Particle origin;	// The bounding box of this node
 	Particle halfDimension; // Helps in spliting to children quadrants
 	QuadParticleTree *children[NUM_CHILDREN]; // Pointers to the children quadrets
