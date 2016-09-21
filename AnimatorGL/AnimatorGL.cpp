@@ -329,9 +329,10 @@ void simulate_parallel_barnes_hut(tbb::concurrent_vector<Particle>& particles, f
 
 		// (Re)Allocate all the vector particles into the tree			
 		atomic_oct_tree = new OctParticleTree(Particle(0.0f, 0.0f, 0.0f, 0.0f), //Crate a new quad tree with limits from zero, up to grid size x and y
-			Particle(static_cast<float>(universe_size_x) * 2, static_cast<float>(universe_size_y) * 2, static_cast<float>(universe_size_z) * 2, 0.0f)); // x2 due to an issue on the tree min/max bounds
+			Particle(static_cast<float>(universe_size_x) * 2,
+				static_cast<float>(universe_size_y) * 2, static_cast<float>(universe_size_z) * 2, 0.0f)); // x2 due to an issue on the tree min/max bounds
 		
-	// Insert the points in the oct tree
+		// Insert the points in the oct tree
 		TreeParticle *oct_tree_particles = new TreeParticle[particle_count];
 
 		parallel_for(tbb::blocked_range<size_t>(0, particle_count), // Get range for this thread
@@ -341,7 +342,7 @@ void simulate_parallel_barnes_hut(tbb::concurrent_vector<Particle>& particles, f
 			}
 		}); // Implicit barrier
 
-			// Must be performed serially. Parallel version requires lots of safe regions anyway
+		// Must be performed serially. Parallel version requires lots of safe regions anyway
 		for (size_t i = 0; i < particle_count; ++i) {
 			atomic_oct_tree->insert(oct_tree_particles + i);
 		}
@@ -353,7 +354,7 @@ void simulate_parallel_barnes_hut(tbb::concurrent_vector<Particle>& particles, f
 			}
 		}); // Implicit barrier
 
-			// Now that all the new accelerations were calculated, advance the particles in time
+		// Now that all the new accelerations were calculated, advance the particles in time
 		parallel_for(tbb::blocked_range<size_t>(0, particle_count), // Get range for this thread
 			[&](const tbb::blocked_range<size_t>& r) {
 			for (size_t index = r.begin(); index != r.end(); ++index) { // Using index range
@@ -364,16 +365,6 @@ void simulate_parallel_barnes_hut(tbb::concurrent_vector<Particle>& particles, f
 
 		   // Recursively de-allocate the tree
 		delete atomic_oct_tree;
-
-		++png_step_counter;
-		if (SAVE_INTERMEDIATE_PNG_STEPS && SAVE_PNG && png_step_counter >= SAVE_PNG_EVERY) {
-
-			png_step_counter = 0;
-			std::string file_name = "universe_serial_barnes_hut_timestep_" + std::to_string(current_time_step) + ".png";
-
-			// TODO: fix the ability to print universe
-			//ParticleHandler::universe_to_png(ParticleHandler::to_vector(particles), universe_size_x, universe_size_y, file_name.c_str());
-		}
 	}
 }
 

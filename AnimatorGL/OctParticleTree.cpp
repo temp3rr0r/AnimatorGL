@@ -54,7 +54,7 @@ void OctParticleTree::insert(TreeParticle* point) {
 		this->total_mass_ += point->get_mass();
 		this->center_of_mass_x_ += point->get_particle().x_;
 		this->center_of_mass_y_ += point->get_particle().y_;
-		this->center_of_mass_y_ += point->get_particle().z_;
+		this->center_of_mass_z_ += point->get_particle().z_;
 
 		if (data == nullptr) {
 			// This leaf has no data already, just store the data
@@ -122,7 +122,8 @@ void OctParticleTree::apply_acceleration(Particle& input_particle) const {
 	// Start from root
 	if (isLeafNode()) {
 		Particle center_of_mass_particle = Particle(center_of_mass_x_, center_of_mass_y_, center_of_mass_z_, total_mass_);
-		if (input_particle.x_ != center_of_mass_particle.x_ && input_particle.y_ != center_of_mass_particle.y_ && input_particle.mass_ != total_mass_)
+		if (input_particle.x_ != center_of_mass_particle.x_ && input_particle.y_ != center_of_mass_particle.y_ &&
+			input_particle.z_ != center_of_mass_particle.z_ && input_particle.mass_ != total_mass_)
 			input_particle.add_acceleration(center_of_mass_particle);	
 	} else {
 		// Get distances	
