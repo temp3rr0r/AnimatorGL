@@ -306,29 +306,16 @@ void simulate_serial_barnes_hut(std::vector<Particle>& particles, float total_ti
 
 												 // Recursively de-allocate the tree
 		delete oct_tree;
-
-		++png_step_counter;
-		if (SAVE_INTERMEDIATE_PNG_STEPS && SAVE_PNG && png_step_counter >= SAVE_PNG_EVERY) {
-
-			png_step_counter = 0;
-			std::string file_name = "universe_serial_barnes_hut_timestep_" + std::to_string(current_time_step) + ".png";
-
-			// TODO: fix the ability to print universe
-			//ParticleHandler::universe_to_png(particles, universe_size_x, universe_size_y, file_name.c_str());
-		}
 	}
 }
 
 void simulate_parallel_barnes_hut(tbb::concurrent_vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count,
 	size_t universe_size_x, size_t universe_size_y, size_t universe_size_z) {
-
-	int png_step_counter = 0;
-	tbb::atomic<OctParticleTree*> atomic_oct_tree;
-
+		
 	for (float current_time_step = 0.0; current_time_step < total_time_steps; current_time_step += time_step) {
 
 		// (Re)Allocate all the vector particles into the tree			
-		atomic_oct_tree = new OctParticleTree(Particle(0.0f, 0.0f, 0.0f, 0.0f), //Crate a new quad tree with limits from zero, up to grid size x and y
+		tbb::atomic<OctParticleTree*> atomic_oct_tree = new OctParticleTree(Particle(0.0f, 0.0f, 0.0f, 0.0f), //Crate a new quad tree with limits from zero, up to grid size x and y
 			Particle(static_cast<float>(universe_size_x) * 2,
 				static_cast<float>(universe_size_y) * 2, static_cast<float>(universe_size_z) * 2, 0.0f)); // x2 due to an issue on the tree min/max bounds
 		
@@ -353,7 +340,7 @@ void simulate_parallel_barnes_hut(tbb::concurrent_vector<Particle>& particles, f
 				atomic_oct_tree->apply_acceleration(particles[index]);
 			}
 		}); // Implicit barrier
-
+				
 		// Now that all the new accelerations were calculated, advance the particles in time
 		parallel_for(tbb::blocked_range<size_t>(0, particle_count), // Get range for this thread
 			[&](const tbb::blocked_range<size_t>& r) {
@@ -363,7 +350,7 @@ void simulate_parallel_barnes_hut(tbb::concurrent_vector<Particle>& particles, f
 		}
 		); // Implicit barrier
 
-		   // Recursively de-allocate the tree
+		// Recursively de-allocate the tree
 		delete atomic_oct_tree;
 	}
 }
@@ -434,11 +421,11 @@ void special_keys(int key_pressed, int x, int y) {
 		break;
 	// Right arrow - increase rotation by 5 degrees
 	case GLUT_KEY_RIGHT:
-		rotate_y -= 5;
+		rotate_y += 5;
 		break;
 	// Left arrow - decrease rotation by 5 degree
 	case GLUT_KEY_LEFT:
-		rotate_y += 5;
+		rotate_y -= 5;
 		break;
 	case GLUT_KEY_UP:
 		rotate_x -= 5;
@@ -597,10 +584,6 @@ int main(int argc, char** argv) {
 	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y, universe_size_z);
 	
 	particles_tbb = ParticleHandler::to_concurrent_vector(particles);
-//	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count); // Advance Simulation with TBB
-	//simulate_parallel_barnes_hut(particles_tbb, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y, universe_size_z);
-	//simulate_serial(particles, total_time_steps, time_step, particle_count); // Advance Simulation serially
-	//simulate_serial_barnes_hut(particles, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y, universe_size_z);
 
 	glutInit(&argc, argv);            // Initialize GLUT
 	
