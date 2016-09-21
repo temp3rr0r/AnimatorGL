@@ -71,18 +71,18 @@ bool ParticleHandler::are_equal(const std::vector<Particle>& first_particles, co
 	return are_equal;
 }
 
-QuadParticleTree* ParticleHandler::to_quad_tree(const std::vector<Particle>& input_particles, size_t size_x, size_t size_y, size_t size_z) {
+OctParticleTree* ParticleHandler::to_octant_tree(const std::vector<Particle>& input_particles, size_t size_x, size_t size_y, size_t size_z) {
 
-	// Crate a new quad tree with limits from zero, up to grid size x and y
-	QuadParticleTree *quad_particle_tree = new QuadParticleTree(Particle(0.0f, 0.0f, 0.0f, 0.0f),
+	// Crate a new oct tree with limits from zero, up to grid size x and y
+	OctParticleTree *oct_particle_tree = new OctParticleTree(Particle(0.0f, 0.0f, 0.0f, 0.0f),
 		Particle(static_cast<float>(size_x), static_cast<float>(size_y), static_cast<float>(size_z), 0.0f));
 
-	// Insert the points in the quad tree
-	TreeParticle *quad_tree_particles = new TreeParticle[input_particles.size()];
+	// Insert the points in the oct tree
+	TreeParticle *oct_tree_particles = new TreeParticle[input_particles.size()];
 	for (size_t i = 0; i < input_particles.size(); ++i) {
-		quad_tree_particles[i].set_particle(input_particles[i]);
-		quad_particle_tree->insert(quad_tree_particles + i);
+		oct_tree_particles[i].set_particle(input_particles[i]);
+		oct_particle_tree->insert(oct_tree_particles + i);
 	}
 
-	return quad_particle_tree;
+	return oct_particle_tree;
 }

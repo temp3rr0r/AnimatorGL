@@ -165,7 +165,7 @@
   <ItemGroup>
     <ClInclude Include="Particle.h" />
     <ClInclude Include="ParticleHandler.h" />
-    <ClInclude Include="QuadParticleTree.h" />
+    <ClInclude Include="OctParticleTree.h" />
     <ClInclude Include="Settings.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="TreeParticle.h" />
@@ -175,7 +175,7 @@
     <ClCompile Include="N-Body.cpp" />
     <ClCompile Include="Particle.cpp" />
     <ClCompile Include="ParticleHandler.cpp" />
-    <ClCompile Include="QuadParticleTree.cpp" />
+    <ClCompile Include="OctParticleTree.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

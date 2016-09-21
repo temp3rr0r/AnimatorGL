@@ -1,7 +1,7 @@
 #pragma once
 #include "Particle.h"
 
-// A class wrapper of typical particles for a Quad tree particle collection
+// A class wrapper of typical particles for a Oct tree particle collection
 class TreeParticle {
 	Particle particle_;
 public:

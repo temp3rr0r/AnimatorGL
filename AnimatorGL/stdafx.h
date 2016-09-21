@@ -25,5 +25,5 @@
 #include "Particle.h"
 #include "ParticleHandler.h"
 #include "Settings.h"
-#include "QuadParticleTree.h"
+#include "OctParticleTree.h"
 #include "TreeParticle.h"

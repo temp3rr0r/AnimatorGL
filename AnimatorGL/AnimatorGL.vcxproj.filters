@@ -30,10 +30,10 @@
     <ClInclude Include="Settings.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="QuadParticleTree.h">
+    <ClInclude Include="TreeParticle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="TreeParticle.h">
+    <ClInclude Include="OctParticleTree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -53,7 +53,7 @@
     <ClCompile Include="ParticleHandler.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="QuadParticleTree.cpp">
+    <ClCompile Include="OctParticleTree.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

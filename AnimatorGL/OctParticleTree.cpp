@@ -1,47 +1,50 @@
 #include "stdafx.h"
 #pragma once
 
-inline QuadParticleTree::QuadParticleTree(const Particle& origin, const Particle& halfDimension) :
+inline OctParticleTree::OctParticleTree(const Particle& origin, const Particle& halfDimension) :
 	origin(origin), halfDimension(halfDimension), data(nullptr) {
 	// Ensure that the children are empty on the new node
 	for (int i = 0; i < NUM_CHILDREN; ++i)
 		children[i] = nullptr;
 }
 
-float QuadParticleTree::get_side_size() const {
+float OctParticleTree::get_side_size() const {
 	return origin.get_distance(halfDimension);
 }
 
-inline float QuadParticleTree::get_total_mass() const {
+inline float OctParticleTree::get_total_mass() const {
 	return total_mass_;
 }
 
-// Delete quadrants recursively
-QuadParticleTree::~QuadParticleTree() {
+// Delete octrants recursively
+OctParticleTree::~OctParticleTree() {
 	for (int i = 0; i < NUM_CHILDREN; ++i)
 		delete children[i];
 }
 
-// Find which quandrant contains the point
-//x : --++
-//y : -+-+
-inline int QuadParticleTree::get_quadrant_containing_point(const Particle& point) const {
-	int quadrant = 0;
+//Children follow a predictable pattern to make accesses simple.
+//Here, -means less than 'origin' in that dimension, +means greater than.
+//child:	0 1 2 3 4 5 6 7
+//x : ----++++
+//y : --++--++
+//z : -+-+-+-+
+inline int OctParticleTree::get_octant_containing_point(const Particle& point) const {
+	int octant = 0;
 	if (point.x_ >= origin.x_)
-		quadrant |= 4;
+		octant |= 4;
 	if (point.y_ >= origin.y_)
-		quadrant |= 2;
+		octant |= 2;
 	if (point.z_>= origin.z_)
-		quadrant |= 1;
-	return quadrant;
+		octant |= 1;
+	return octant;
 }
 
-inline bool QuadParticleTree::isLeafNode() const {
+inline bool OctParticleTree::isLeafNode() const {
 	// If this node is a leaf, then at least the first child will be null
 	return children[0] == nullptr;
 }
 
-void QuadParticleTree::insert(TreeParticle* point) {
+void OctParticleTree::insert(TreeParticle* point) {
 
 	if (isLeafNode()) {
 		// If the node is a leaf, we don't have to "dive" any depper in the tree
@@ -70,20 +73,20 @@ void QuadParticleTree::insert(TreeParticle* point) {
 					newOrigin.x_ += halfDimension.x_ * (i & 4 ? .5f : -.5f);
 					newOrigin.y_ += halfDimension.y_ * (i & 2 ? .5f : -.5f);
 					newOrigin.z_ += halfDimension.z_ * (i & 1 ? .5f : -.5f);
-					children[i] = new QuadParticleTree(newOrigin, halfDimension *.5f);
+					children[i] = new OctParticleTree(newOrigin, halfDimension *.5f);
 					// Increase the node depth
 					children[i]->depth = depth + 1;
 				}
 
 				// Re-insert the older data of the leaf into the correct child
-				children[get_quadrant_containing_point(oldPoint->get_particle())]->insert(oldPoint);
+				children[get_octant_containing_point(oldPoint->get_particle())]->insert(oldPoint);
 				// Continue to recursively find were to insert the requested point. We don't have
 				// to search from the tree root. We can continue from the current node.
-				children[get_quadrant_containing_point(point->get_particle())]->insert(point);
+				children[get_octant_containing_point(point->get_particle())]->insert(point);
 			}
 		}
 	} else {
-		// We are in an interrior node. We have to go deeper into the appropriate child quadrant
+		// We are in an interrior node. We have to go deeper into the appropriate child octant
 
 		this->total_mass_ += point->get_mass();
 
@@ -109,13 +112,13 @@ void QuadParticleTree::insert(TreeParticle* point) {
 			this->center_of_mass_z_ = center_z / this->total_mass_;
 		}
 
-		int quadrant = get_quadrant_containing_point(point->get_particle());
+		int octant = get_octant_containing_point(point->get_particle());
 
-		children[quadrant]->insert(point);
+		children[octant]->insert(point);
 	}
 }
 
-void QuadParticleTree::apply_acceleration(Particle& input_particle) const {
+void OctParticleTree::apply_acceleration(Particle& input_particle) const {
 	// Start from root
 	if (isLeafNode()) {
 		Particle center_of_mass_particle = Particle(center_of_mass_x_, center_of_mass_y_, center_of_mass_z_, total_mass_);
@@ -133,8 +136,8 @@ void QuadParticleTree::apply_acceleration(Particle& input_particle) const {
 				input_particle.add_acceleration(center_of_mass_particle);
 		} else {
 			// Go deeper in the tree
-			int quadtrant = get_quadrant_containing_point(input_particle);
-			children[quadtrant]->apply_acceleration(input_particle);
+			int octant = get_octant_containing_point(input_particle);
+			children[octant]->apply_acceleration(input_particle);
 		}
 	}
 }
