@@ -1,4 +1,5 @@
 #include "stdafx.h"
+#include <gl/freeglut.h>
 
 // Macros
 #define GL_GLEXT_PROTOTYPES

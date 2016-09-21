@@ -7,7 +7,6 @@
 
 #include <stdio.h>
 #include <tchar.h>
-#include <GL/freeglut.h>
 #include <stdlib.h>
 #include <math.h>
 #include <random>
