@@ -285,7 +285,6 @@ void set_colour(int colour) {
 	}
 }
 
-
 void simulate_serial_barnes_hut(std::vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count,
 	size_t universe_size_x, size_t universe_size_y, size_t universe_size_z) {
 
@@ -406,6 +405,33 @@ void simulate_tbb2(tbb::concurrent_vector<Particle>& particles, float total_time
 	}
 }
 
+void simulate_serial(std::vector<Particle>& particles, float total_time_steps, float time_step, size_t particle_count) {
+
+	// Do simulate
+	for (float current_time_step = 0.0f; current_time_step < total_time_steps; current_time_step += time_step) {
+
+		// Calculate all the applied forces as acceleration on every particle
+		for (size_t r = 0; r < particle_count; ++r) {
+			Particle current_particle = particles[r]; // Thread local variable
+			for (size_t i = r; i != particle_count; ++i) {
+				current_particle = particles[i];
+				for (size_t j = i; j != particle_count; ++j) { // Calculate pairs of accelerations
+					current_particle.add_acceleration_pairwise(particles[j]); // Pairwise eliminates branching
+				}
+				particles[i] = current_particle;
+			}
+		}
+
+		for (size_t r = 0; r < particle_count; ++r) {
+			for (size_t index = r; index != particle_count; ++index) { // Using index range
+				particles[index].advance(time_step);
+			}
+		}
+		
+
+	}
+}
+
 // Callback for key presses
 void special_keys(int key_pressed, int x, int y) {
 	switch(key_pressed) {
@@ -465,8 +491,7 @@ void special_keys(int key_pressed, int x, int y) {
 	glutPostRedisplay();
 }
 
-void
-mouse(int button, int state, int x, int y)
+void mouse(int button, int state, int x, int y)
 {
 	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
 		spinning = 0;
@@ -485,7 +510,6 @@ mouse(int button, int state, int x, int y)
 		moving = 0;
 	}
 }
-
 
 void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // Clear color and depth buffers
@@ -533,9 +557,7 @@ void display() {
 	glutSwapBuffers();  // Swap the front and back frame buffers (float buffering)
 }
 
-
-void
-controlLights(int value)
+void controlLights(int value)
 {
 	switch (value) {
 
@@ -558,7 +580,6 @@ controlLights(int value)
 	}
 	glutPostRedisplay();
 }
-
 
 void main_menu_select(int value)
 {
@@ -583,8 +604,12 @@ int main(int argc, char** argv) {
 
 	// Put random live cells
 	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y, universe_size_z);
+	
 	particles_tbb = ParticleHandler::to_concurrent_vector(particles);
-	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count); // Advance Simulation with TBB
+//	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count); // Advance Simulation with TBB
+	//simulate_parallel_barnes_hut(particles_tbb, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y, universe_size_z);
+	//simulate_serial(particles, total_time_steps, time_step, particle_count); // Advance Simulation serially
+	//simulate_serial_barnes_hut(particles, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y, universe_size_z);
 
 	glutInit(&argc, argv);            // Initialize GLUT
 	

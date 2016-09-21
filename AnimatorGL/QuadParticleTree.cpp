@@ -1,7 +1,8 @@
-#pragma once
 #include "stdafx.h"
+#pragma once
 
-inline QuadParticleTree::QuadParticleTree(const Particle& origin, const Particle& halfDimension) : origin(origin), halfDimension(halfDimension), data(nullptr) {
+inline QuadParticleTree::QuadParticleTree(const Particle& origin, const Particle& halfDimension) :
+	origin(origin), halfDimension(halfDimension), data(nullptr) {
 	// Ensure that the children are empty on the new node
 	for (int i = 0; i < NUM_CHILDREN; ++i)
 		children[i] = nullptr;
@@ -97,7 +98,7 @@ void QuadParticleTree::insert(TreeParticle* point) {
 						++children_count;
 						center_x += children[i]->data->get_particle().x_ * children[i]->data->get_mass();
 						center_y += children[i]->data->get_particle().y_ * children[i]->data->get_mass();
-						center_y += children[i]->data->get_particle().z_ * children[i]->data->get_mass();
+						center_z += children[i]->data->get_particle().z_ * children[i]->data->get_mass();
 					}
 				}
 			}
