@@ -128,7 +128,7 @@ void OctParticleTree::apply_acceleration(Particle& input_particle) const {
 		
 		Particle center_of_mass_particle = Particle(center_of_mass_x_, center_of_mass_y_, center_of_mass_z_, total_mass_);
 		float distance_from_center_of_mass = input_particle.get_distance(center_of_mass_particle);
-		float side = get_side_size() / (depth + 1);
+		float side = get_side_size();
 		
 		if (side / distance_from_center_of_mass < THETA) {
 			input_particle.add_acceleration(center_of_mass_particle);

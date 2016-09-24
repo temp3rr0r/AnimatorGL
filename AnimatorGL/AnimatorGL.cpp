@@ -503,8 +503,8 @@ void display() {
 
 	draw_3d_cartesian_system();
 
-	//simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count); // Advance Simulation with TBB
-	simulate_parallel_barnes_hut(particles_tbb, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y, universe_size_z);
+	simulate_tbb2(particles_tbb, total_time_steps, time_step, particle_count); // Advance Simulation with TBB
+	//simulate_parallel_barnes_hut(particles_tbb, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y, universe_size_z);
 	//simulate_serial_barnes_hut(particles, total_time_steps, time_step, particle_count, universe_size_x, universe_size_y, universe_size_z);
 
 	for (const Particle& current_particle : particles_tbb) {
@@ -581,8 +581,7 @@ int main(int argc, char** argv) {
 	thread_count = 4;
 
 	// Put random live cells
-	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y, universe_size_z);
-	
+	ParticleHandler::allocate_random_particles(particle_count, particles, universe_size_x, universe_size_y, universe_size_z);	
 	particles_tbb = ParticleHandler::to_concurrent_vector(particles);
 
 	glutInit(&argc, argv);            // Initialize GLUT
