@@ -141,7 +141,13 @@ void draw_3d_cartesian_system() {
 //	std::cout << "Universe Size: " << universe_size_x << " x " << universe_size_y << std::endl << std::endl;
 
 	glColor3f(1.0, 1.0, 1.0);
-	draw_string(GLUT_BITMAP_TIMES_ROMAN_24, "Parallel N-Body simulation with TBB", hud_x + 3.5f, hud_y, hud_z); // Chart Legend	
+	std::string hud_label("Parallel N-Body simulation with TBB (");
+	hud_label.append(std::to_string(particle_count));
+	hud_label.append(" bodies)");
+	char* hud_label_pointer = new char[hud_label.length() + 1];
+	strcpy_s(hud_label_pointer, sizeof(char) * (hud_label.length() + 1), hud_label.c_str());
+	
+	draw_string(GLUT_BITMAP_TIMES_ROMAN_24, hud_label_pointer, hud_x + 3.5f, hud_y, hud_z); // Chart Legend
 //	glColor3f(1.0, 1.0, 1.0);
 //	draw_string(GLUT_BITMAP_HELVETICA_12, "Toggle 2D Signal Areas: F4 key.", hud_x + 0.5f, hud_y, hud_z - 0.5f);
 //	draw_string(GLUT_BITMAP_HELVETICA_12, "Rotation: UP, DOWN, LEFT, RIGHT keys.", hud_x + 0.4f, hud_y, hud_z - 0.70f);
