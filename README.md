@@ -13,7 +13,7 @@ Documentation comparing the speed-up between the serial and parallel versions: h
 
 ## References
 
-- Intel Developer zone - n-bodies: a parallel TBB solution: computing accelerations? or forces? - https://software.intel.com/enus/blogs/2009/09/22/n-bodies-a-parallel-tbb-solution-computingaccelerations-or-forces
-- Wikipedia: Fast Inverse Square Root - https://en.wikipedia.org/wiki/Fastinversesquareroot
-- Wikipedia: Barnes-Hut simulation - https://en.wikipedia.org/wiki/BarnesHutsimulation
-- Tutorial: Scalable Memory Allocator - https://www.threadingbuildingblocks.org/tutorial-intel-tbb-scalablememory-allocator
+- Intel Thread Building Blocks (TBB) - https://software.intel.com/en-us/tbb
+- Wikipedia: Fast Inverse Square Root - https://en.wikipedia.org/wiki/Fast_inverse_square_root
+- Wikipedia: Barnes-Hut simulation - https://en.wikipedia.org/wiki/Barnes%E2%80%93Hut_simulation
+- Tutorial: Scalable Memory Allocator - https://www.threadingbuildingblocks.org/tutorial-intel-tbb-scalable-memory-allocator
